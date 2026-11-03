@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// 1. Tabel User (Khusus Siswa / Pelajar)
+model User {
+  id          String      @id @default(uuid())
+  name        String
+  nis         String      @unique
+  school      String      // Contoh: SMAN 1 Kota
+  class       String      // Contoh: XI IPA 2
+  dob         DateTime    @db.Date // Tanggal Lahir
+  phone       String?
+  password    String      // Hash menggunakan bcrypt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relasi ke tabel TtdRecord
+  records     TtdRecord[]
+}
+
+// 2. Tabel TtdRecord (Untuk Shadcn Calendar & Log ScrollArea khusus Hari Rabu)
+model TtdRecord {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  date      DateTime   @db.Date
+  status    TtdStatus  @default(BELUM_DICATAT) // Menggunakan string/enum: "sudah", "pending", "terlewat"
+  label     String     // Contoh: "Sudah Diminum", "Jadwal Hari Ini", "Terlewat"
+  desc      String?
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Mencegah duplikasi data pencatatan pada tanggal dan user yang sama
+  @@unique([userId, date])
+}
+
+// Enum Status Kepatuhan TTD
+enum TtdStatus {
+  SUDAH         // Sudah diminum & dicatat (Hijau di Kalender & Log)
+  JADWAL        // Hari ini jadwal minum tapi belum dicatat (Merah/Rose)
+  TERLEWAT      // Jadwal Rabu sebelumnya yang terlewat tidak diminum (Kuning/Amber)
+  BELUM_DICATAT // Status default hari-hari selain Rabu
+}
+
+// 3. Tabel Article (Untuk Fitur Edukasi & Navigasi "Kenali Anemia")
+model Article {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String   // Isi artikel (bisa format Markdown atau HTML)
+  imageUrl    String?  // Banner/Thumbnail artikel
+  author      String   @default("Tim Kesehatan Anemia Care")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
